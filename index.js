@@ -3,43 +3,41 @@ const axios = require('axios');
 const app = express();
 
 const PORT = process.env.PORT || 3000;
-const LIST_URL = 'https://raw.githubusercontent.com/Davuksl/giflist/main/list.txt';
+const BASE_LIST_URL = 'https://raw.githubusercontent.com/Davuksl/giflist/main/list.txt';
 
-// Переменная для хранения списка гифок в памяти
 let gifList = [];
 
-// Функция для обновления списка гифок из GitHub
 async function updateGifList() {
     try {
-        console.log('Обновляем список гифок с GitHub...');
-        const response = await axios.get(LIST_URL);
+        // Добавляем к ссылке текущее время в миллисекундах (например, ?t=1716843421000)
+        // Это обнуляет кэш GitHub, и он ОБЯЗАН отдать свежий файл
+        const cacheBusterUrl = `${BASE_LIST_URL}?t=${Date.now()}`;
         
-        // Разбиваем текст по строкам, убираем пустые строки и лишние пробелы/символы переноса (\r)
+        console.log(`Обновляем список гифок с GitHub (без кэша)...`);
+        const response = await axios.get(cacheBusterUrl);
+        
         gifList = response.data
             .split('\n')
             .map(line => line.trim())
             .filter(line => line.length > 0 && (line.startsWith('http://') || line.startsWith('https://')));
 
-        console.log(`Список успешно обновлен! Загружено гифок: ${gifList.length}`);
+        console.log(`[УСПЕХ] Список обновлен! Найдено гифок: ${gifList.length}`);
     } catch (error) {
         console.error('Не удалось загрузить список гифок:', error.message);
-        // Если это первый запуск и массив пустой, добавим заглушку, чтобы сервер не падал
         if (gifList.length === 0) {
             gifList = ['https://media.giphy.com/media/c6r0v9E_BofqE/giphy.gif'];
         }
     }
 }
 
-// Запускаем первичное получение списка при старте сервера
+// Стартовый запуск
 updateGifList();
 
-// Обновляем список каждую 1 минуту (60 секунд * 1000 мс)
+// Проверка каждую минуту
 setInterval(updateGifList, 60 * 1000);
 
-// Наш эндпоинт с расширением .gif, чтобы Discord всё правильно понял
 app.get('/fun.gif', async (req, res) => {
     try {
-        // Жесткие заголовки против кеширования Discord
         res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
@@ -49,13 +47,11 @@ app.get('/fun.gif', async (req, res) => {
             return res.status(404).send('Gif list is empty');
         }
 
-        // Выбираем случайную ссылку
         const randomIndex = Math.floor(Math.random() * gifList.length);
         const targetUrl = gifList[randomIndex];
 
-        console.log(`[Запрос] Стримим рандомную гифку: ${targetUrl}`);
+        console.log(`[Запрос] Стримим: ${targetUrl}`);
 
-        // Скачиваем гифку по ссылке из txt и перенаправляем поток в Дискорд
         const response = await axios({
             method: 'get',
             url: targetUrl,
@@ -72,5 +68,4 @@ app.get('/fun.gif', async (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`Сервер пашет на порту ${PORT}`);
-    console.log(`Ссылка для Дискорда: http://localhost:${PORT}/fun.gif`);
 });
