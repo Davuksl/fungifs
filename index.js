@@ -2,32 +2,60 @@ const express = require('express');
 const axios = require('axios');
 const app = express();
 
-// Render сам выдает порт через переменную окружения, если её нет — ставим 3000
 const PORT = process.env.PORT || 3000;
+const LIST_URL = 'https://raw.githubusercontent.com/Davuksl/giflist/main/list.txt';
 
-// ТВОЙ СПИСОК ГИФОК (Заменяй и добавляй сколько хочешь)
-const GIF_LIST = [
-    'https://media.tenor.com/br_4g6mIWvIAAAAM/89squad-bratishkinoff.gif',
-    'https://tenor.com/search/89squad-gifs',
-    'https://media.tenor.com/9MJee27fZrIAAAAM/89squad-bratishkinoff.gif',
-    'https://media.tenor.com/mp7djv8-ia0AAAAM/kier-bigbrotheriswatching.gif'
-];
+// Переменная для хранения списка гифок в памяти
+let gifList = [];
 
-app.get('/fun', async (req, res) => {
+// Функция для обновления списка гифок из GitHub
+async function updateGifList() {
     try {
-        // Жесткие заголовки, чтобы Discord вообще не думал кешировать
+        console.log('Обновляем список гифок с GitHub...');
+        const response = await axios.get(LIST_URL);
+        
+        // Разбиваем текст по строкам, убираем пустые строки и лишние пробелы/символы переноса (\r)
+        gifList = response.data
+            .split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length > 0 && (line.startsWith('http://') || line.startsWith('https://')));
+
+        console.log(`Список успешно обновлен! Загружено гифок: ${gifList.length}`);
+    } catch (error) {
+        console.error('Не удалось загрузить список гифок:', error.message);
+        // Если это первый запуск и массив пустой, добавим заглушку, чтобы сервер не падал
+        if (gifList.length === 0) {
+            gifList = ['https://media.giphy.com/media/c6r0v9E_BofqE/giphy.gif'];
+        }
+    }
+}
+
+// Запускаем первичное получение списка при старте сервера
+updateGifList();
+
+// Раз в 15 минут обновляем список (на случай, если ты добавишь новые ссылки в txt)
+setInterval(updateGifList, 15 * 60 * 1000);
+
+// Добавили .gif в эндпоинт. Теперь ссылка будет вида: https://твой-проект.onrender.com/fun.gif
+app.get('/fun.gif', async (req, res) => {
+    try {
+        // Жесткие заголовки против кеширования Discord
         res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
         res.setHeader('Content-Type', 'image/gif');
 
-        // Выбираем случайную гифку из списка
-        const randomIndex = Math.floor(Math.random() * GIF_LIST.length);
-        const targetUrl = GIF_LIST[randomIndex];
+        if (gifList.length === 0) {
+            return res.status(404).send('Gif list is empty');
+        }
 
-        console.log(`[Запрос] Выбрана рандомная гифка: ${targetUrl}`);
+        // Выбираем случайную ссылку
+        const randomIndex = Math.floor(Math.random() * gifList.length);
+        const targetUrl = gifList[randomIndex];
 
-        // Качаем гифку по ссылке и стримим её в ответ Discord
+        console.log(`[Запрос] Стримим рандомную гифку: ${targetUrl}`);
+
+        // Скачиваем гифку по ссылке из txt и перенаправляем поток в Дискорд
         const response = await axios({
             method: 'get',
             url: targetUrl,
@@ -37,12 +65,12 @@ app.get('/fun', async (req, res) => {
         response.data.pipe(res);
 
     } catch (error) {
-        console.error('Ошибка стриминга гифки:', error.message);
-        // Если что-то сломалось, отдаем 500 ошибку, чтобы Discord не сломал интерфейс юзеру
-        res.status(500).send('Error loading image');
+        console.error('Ошибка при стриминге гифки:', error.message);
+        res.status(500).send('Error loading GIF');
     }
 });
 
 app.listen(PORT, () => {
-    console.log(`Сервер успешно запущен на порту ${PORT}`);
+    console.log(`Сервер пашет на порту ${PORT}`);
+    console.log(`Ссылка для Дискорда: http://localhost:${PORT}/fun.gif`);
 });
