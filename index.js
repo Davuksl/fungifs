@@ -36,33 +36,33 @@ updateGifList();
 // Проверка каждую минуту
 setInterval(updateGifList, 60 * 1000);
 
-app.get('/fun.gif', async (req, res) => {
+app.get('/fun.gif', (req, res) => {
     try {
+        // Заголовки от кэша (на всякий случай оставляем)
         res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
-        res.setHeader('Content-Type', 'image/gif');
 
         if (gifList.length === 0) {
             return res.status(404).send('Gif list is empty');
         }
 
+        // Выбираем рандомную гифку из списка памяти
         const randomIndex = Math.floor(Math.random() * gifList.length);
         const targetUrl = gifList[randomIndex];
 
-        console.log(`[Запрос] Стримим: ${targetUrl}`);
+        // Генерируем уникальный хвост времени
+        const separator = targetUrl.includes('?') ? '&' : '?';
+        const finalUrl = `${targetUrl}${separator}discord_bust=${Date.now()}`;
 
-        const response = await axios({
-            method: 'get',
-            url: targetUrl,
-            responseType: 'stream'
-        });
+        console.log(`[Редирект] Перенаправляем Discord на: ${finalUrl}`);
 
-        response.data.pipe(res);
+        // Делаем временный редирект (302). Discord обязан пойти по нему.
+        res.redirect(302, finalUrl);
 
     } catch (error) {
-        console.error('Ошибка при стриминге гифки:', error.message);
-        res.status(500).send('Error loading GIF');
+        console.error('Ошибка редиректа:', error.message);
+        res.status(500).send('Error');
     }
 });
 
