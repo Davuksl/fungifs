@@ -7,10 +7,10 @@ const PORT = process.env.PORT || 3000;
 
 // ТВОЙ СПИСОК ГИФОК (Заменяй и добавляй сколько хочешь)
 const GIF_LIST = [
-    'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbWdtcmc3b2E0M3B3Ym95bHh0bWNtOHg0czN6NXA0Z3d6bms4ZXFwOCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/VbnUQirBP0vG8/giphy.gif',
-    'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbTN0Ym15cm1wZnd0amM0bW5icXNndnl1YW96Nmw0YmZ1M240bWcxdyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/BcMJcx2fGtLWEXMQv5/giphy.gif',
-    'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3Z4bTNvcm00Mm93bXp5ZDJ5b3RnaDdrMmR3ZXB4MXZid3FmZnR0MSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/cuw765T66ID6g/giphy.gif',
-    'https://media.giphy.com/media/c6r0v9E_BofqE/giphy.gif'
+    'https://media.tenor.com/br_4g6mIWvIAAAAM/89squad-bratishkinoff.gif',
+    'https://tenor.com/search/%D0%B1%D1%80%D0%B0%D1%82%D0%B8%D1%88%D0%BA%D0%B8%D0%BD-gifs',
+    'https://media.tenor.com/5HTwFX_1rvkAAAAm/shrug-no-worries.webp',
+    'https://media.tenor.com/mp7djv8-ia0AAAAM/kier-bigbrotheriswatching.gif'
 ];
 
 app.get('/fun', async (req, res) => {
