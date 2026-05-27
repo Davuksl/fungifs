@@ -7,10 +7,11 @@ const BASE_LIST_URL = 'https://raw.githubusercontent.com/Davuksl/giflist/main/li
 
 let gifList = [];
 
+// Каждую минуту качаем свежий список с гитхаба
 async function updateGifList() {
     try {
         const cacheBusterUrl = `${BASE_LIST_URL}?t=${Date.now()}`;
-        console.log(`Обновляем список гифок с GitHub (без кэша)...`);
+        console.log(`Обновляем список гифок с GitHub...`);
         const response = await axios.get(cacheBusterUrl);
         
         gifList = response.data
@@ -27,34 +28,34 @@ async function updateGifList() {
     }
 }
 
-// Первичный запуск и обновление каждую минуту
 updateGifList();
 setInterval(updateGifList, 60 * 1000);
 
+// Ссылка строго /fun.gif, как ты и просил
 app.get('/fun.gif', async (req, res) => {
     try {
         if (gifList.length === 0) {
             return res.status(404).send('Gif list is empty');
         }
 
-        // Выбираем рандомную гифку
+        // Берем рандомную гифку из списка
         const randomIndex = Math.floor(Math.random() * gifList.length);
         const targetUrl = gifList[randomIndex];
 
-        // Добавляем кэшбастинг к источнику гифки, чтобы прокси Дискорда не брал её из своего кэша по старому URL
-        const separator = targetUrl.includes('?') ? '&' : '?';
-        const finalDownloadUrl = `${targetUrl}${separator}cb=${Date.now()}`;
+        console.log(`[Запрос] Стримим гифку: ${targetUrl}`);
 
-        console.log(`[Стриминг] Маскируем и отдаем: ${targetUrl}`);
-
-        // Скачиваем гифку
+        // Качаем гифку как Buffer (набор байт), а не как Stream
         const response = await axios({
             method: 'get',
-            url: finalDownloadUrl,
-            responseType: 'stream'
+            url: targetUrl,
+            responseType: 'arraybuffer' // работаем с бинарником напрямую
         });
 
-        // ЖЕСТКО сносим заголовки удаленного сервера и ставим свои, чтобы Discord не кэшировал
+        let buffer = Buffer.from(response.data);
+        const randomByte = Buffer.from([Math.floor(Math.random() * 256)]);
+        buffer = Buffer.concat([buffer, randomByte]);
+
+        // Выставляем жесткие заголовки со скрина
         res.removeHeader('Cache-Control');
         res.removeHeader('Expires');
         res.removeHeader('Pragma');
@@ -64,8 +65,8 @@ app.get('/fun.gif', async (req, res) => {
         res.setHeader('Expires', '0');
         res.setHeader('Content-Type', 'image/gif');
 
-        // Перенаправляем поток данных в ответ Дискорду
-        response.data.pipe(res);
+        // Отправляем измененную гифку в Discord
+        res.send(buffer);
 
     } catch (error) {
         console.error('Ошибка при стриминге гифки:', error.message);
@@ -74,5 +75,5 @@ app.get('/fun.gif', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`Сервер скрытого проксирования запущен на порту ${PORT}`);
+    console.log(`Сервер запущен на порту ${PORT}. Ссылка: /fun.gif`);
 });
