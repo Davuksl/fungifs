@@ -20,7 +20,8 @@ async function updateGifList() {
         console.error('[GitHub Ошибка]:', error.message);
     }
 }
-updatePhotoList(); // Используем твою функцию обновления списка фонов/гифок
+
+// Запускаем правильную функцию при старте и ставим таймер
 updateGifList();
 setInterval(updateGifList, 60 * 1000);
 
@@ -48,7 +49,7 @@ app.get('/fun.gif', async (req, res) => {
             const response = await axios({
                 method: 'get',
                 url: targetUrl,
-                responseType: 'arraybuffer' // Качаем как буфер, чтобы сломать хэш бота
+                responseType: 'arraybuffer'
             });
 
             let buffer = Buffer.from(response.data);
