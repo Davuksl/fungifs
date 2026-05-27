@@ -9,10 +9,7 @@ let gifList = [];
 
 async function updateGifList() {
     try {
-        // Добавляем к ссылке текущее время в миллисекундах (например, ?t=1716843421000)
-        // Это обнуляет кэш GitHub, и он ОБЯЗАН отдать свежий файл
         const cacheBusterUrl = `${BASE_LIST_URL}?t=${Date.now()}`;
-        
         console.log(`Обновляем список гифок с GitHub (без кэша)...`);
         const response = await axios.get(cacheBusterUrl);
         
@@ -30,42 +27,52 @@ async function updateGifList() {
     }
 }
 
-// Стартовый запуск
+// Первичный запуск и обновление каждую минуту
 updateGifList();
-
-// Проверка каждую минуту
 setInterval(updateGifList, 60 * 1000);
 
-app.get('/fun.gif', (req, res) => {
+app.get('/fun.gif', async (req, res) => {
     try {
-        // Заголовки от кэша (на всякий случай оставляем)
-        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-        res.setHeader('Pragma', 'no-cache');
-        res.setHeader('Expires', '0');
-
         if (gifList.length === 0) {
             return res.status(404).send('Gif list is empty');
         }
 
-        // Выбираем рандомную гифку из списка памяти
+        // Выбираем рандомную гифку
         const randomIndex = Math.floor(Math.random() * gifList.length);
         const targetUrl = gifList[randomIndex];
 
-        // Генерируем уникальный хвост времени
+        // Добавляем кэшбастинг к источнику гифки, чтобы прокси Дискорда не брал её из своего кэша по старому URL
         const separator = targetUrl.includes('?') ? '&' : '?';
-        const finalUrl = `${targetUrl}${separator}discord_bust=${Date.now()}`;
+        const finalDownloadUrl = `${targetUrl}${separator}cb=${Date.now()}`;
 
-        console.log(`[Редирект] Перенаправляем Discord на: ${finalUrl}`);
+        console.log(`[Стриминг] Маскируем и отдаем: ${targetUrl}`);
 
-        // Делаем временный редирект (302). Discord обязан пойти по нему.
-        res.redirect(302, finalUrl);
+        // Скачиваем гифку
+        const response = await axios({
+            method: 'get',
+            url: finalDownloadUrl,
+            responseType: 'stream'
+        });
+
+        // ЖЕСТКО сносим заголовки удаленного сервера и ставим свои, чтобы Discord не кэшировал
+        res.removeHeader('Cache-Control');
+        res.removeHeader('Expires');
+        res.removeHeader('Pragma');
+        
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+        res.setHeader('Content-Type', 'image/gif');
+
+        // Перенаправляем поток данных в ответ Дискорду
+        response.data.pipe(res);
 
     } catch (error) {
-        console.error('Ошибка редиректа:', error.message);
-        res.status(500).send('Error');
+        console.error('Ошибка при стриминге гифки:', error.message);
+        res.status(500).send('Error loading GIF');
     }
 });
 
 app.listen(PORT, () => {
-    console.log(`Сервер пашет на порту ${PORT}`);
+    console.log(`Сервер скрытого проксирования запущен на порту ${PORT}`);
 });
