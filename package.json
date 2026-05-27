@@ -1,13 +1,14 @@
 {
-  "name": "discord-gif-rotator",
+  "name": "discord-multi-troll",
   "version": "1.0.0",
-  "description": "Anti-cache GIF proxy for Discord",
+  "description": "GIF rotator and math challenge for Discord",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
     "axios": "^1.7.0",
+    "canvas": "^2.11.2",
     "express": "^4.19.0"
   }
 }
