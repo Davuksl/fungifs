@@ -8,8 +8,8 @@ const PORT = process.env.PORT || 3000;
 // ТВОЙ СПИСОК ГИФОК (Заменяй и добавляй сколько хочешь)
 const GIF_LIST = [
     'https://media.tenor.com/br_4g6mIWvIAAAAM/89squad-bratishkinoff.gif',
-    'https://tenor.com/search/%D0%B1%D1%80%D0%B0%D1%82%D0%B8%D1%88%D0%BA%D0%B8%D0%BD-gifs',
-    'https://media.tenor.com/5HTwFX_1rvkAAAAm/shrug-no-worries.webp',
+    'https://tenor.com/search/89squad-gifs',
+    'https://media.tenor.com/9MJee27fZrIAAAAM/89squad-bratishkinoff.gif',
     'https://media.tenor.com/mp7djv8-ia0AAAAM/kier-bigbrotheriswatching.gif'
 ];
 
