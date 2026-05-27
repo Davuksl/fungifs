@@ -1,13 +1,13 @@
 {
-  "name": "discord-math-generator",
+  "name": "discord-gif-rotator",
   "version": "1.0.0",
-  "description": "Dynamic math challenge generator for Discord",
+  "description": "Anti-cache GIF proxy for Discord",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "canvas": "^2.11.2",
+    "axios": "^1.7.0",
     "express": "^4.19.0"
   }
 }
