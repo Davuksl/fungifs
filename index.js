@@ -31,29 +31,29 @@ async function generateDebateGifBuffer() {
     const ctx = canvas.getContext('2d');
 
     // Background
-    ctx.fillStyle = '#36393f'; // Discord dark theme background
+    ctx.fillStyle = '#ffffff'; // White background
     ctx.fillRect(0, 0, width, height);
 
     // Select a random debate topic
     const topic = DEBATE_TOPICS[Math.floor(Math.random() * DEBATE_TOPICS.length)];
 
     ctx.font = 'bold 30px sans-serif';
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = '#000000'; // Black text for question
     ctx.textAlign = 'center';
     ctx.fillText(topic.question, width / 2, 50);
 
     // Draw two conflicting answers
     ctx.font = '24px sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillStyle = '#7289da'; // Discord blue
+    ctx.fillStyle = '#0000ff'; // Pure blue for first answer
     ctx.fillText(topic.answers[0], width / 4, 120);
 
     ctx.textAlign = 'right';
-    ctx.fillStyle = '#f04747'; // Discord red
+    ctx.fillStyle = '#ff0000'; // Pure red for second answer
     ctx.fillText(topic.answers[1], (width / 4) * 3, 120);
     
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#99aab5'; // Discord grey
+    ctx.fillStyle = '#555555'; // Dark grey for footer
     ctx.font = '18px sans-serif';
     ctx.fillText('Каждый раз по-разному!', width / 2, 170);
 
