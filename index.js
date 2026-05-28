@@ -101,16 +101,21 @@ app.get('/fun.gif', async (req, res) => {
     const userAgent = req.headers['user-agent'] || '';
     const isDiscordBot = userAgent.includes('Discordbot');
 
-    if (isDiscordBot && !req.query._) { // If it's a Discord bot and not already a redirected request
-        const uniqueUrl = `/fun.gif?_=${Date.now()}`;
-        console.log(`[Discord Bot] Redirecting to unique URL to bypass caching: ${uniqueUrl}`);
-        // Using 302 Found, as 307 Temporary Redirect might be too strong and some clients might not re-request the original URL
-        res.redirect(302, uniqueUrl);
+    if (isDiscordBot) { // If it's a Discord bot, always redirect to a unique URL
+        const uniqueProxyUrl = `/proxy-gif/${Date.now()}`;
+        console.log(`[Discord Bot] Redirecting to unique proxy URL: ${uniqueProxyUrl}`);
+        res.redirect(302, uniqueProxyUrl);
         return;
     }
 
-    // Serve the GIF directly (either for user client or for Discordbot after redirect)
-    await serveRandomGif(req, res, isDiscordBot);
+    // For regular user clients, serve the GIF directly
+    await serveRandomGif(req, res, false); // false because it's not a Discord bot request here
+});
+
+// New route to handle redirected Discordbot requests
+app.get('/proxy-gif/:timestamp', async (req, res) => {
+    // This route is specifically for Discordbot after a redirect, so we know it's a Discordbot
+    await serveRandomGif(req, res, true);
 });
 
 // Health check endpoint
