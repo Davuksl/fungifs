@@ -54,14 +54,7 @@ async function fetchGifWithAntiCache(url) {
     return Buffer.concat([buffer, randomByte]);
 }
 
-// Initial fetch and scheduled updates
-updateGifList();
-const updateInterval = setInterval(updateGifList, UPDATE_INTERVAL);
-
-app.get('/fun.gif', async (req, res) => {
-    const userAgent = req.headers['user-agent'] || '';
-    const isDiscordBot = userAgent.includes('Discordbot');
-
+async function serveRandomGif(req, res, isDiscordBot) {
     // Force headers to disable caching
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
     res.setHeader('Pragma', 'no-cache');
@@ -98,6 +91,26 @@ app.get('/fun.gif', async (req, res) => {
         console.error('[GIF Serving Error]:', error.message);
         res.status(502).send('Failed to fetch GIF from source.');
     }
+}
+
+// Initial fetch and scheduled updates
+updateGifList();
+const updateInterval = setInterval(updateGifList, UPDATE_INTERVAL);
+
+app.get('/fun.gif', async (req, res) => {
+    const userAgent = req.headers['user-agent'] || '';
+    const isDiscordBot = userAgent.includes('Discordbot');
+
+    if (isDiscordBot && !req.query._) { // If it's a Discord bot and not already a redirected request
+        const uniqueUrl = `/fun.gif?_=${Date.now()}`;
+        console.log(`[Discord Bot] Redirecting to unique URL to bypass caching: ${uniqueUrl}`);
+        // Using 302 Found, as 307 Temporary Redirect might be too strong and some clients might not re-request the original URL
+        res.redirect(302, uniqueUrl);
+        return;
+    }
+
+    // Serve the GIF directly (either for user client or for Discordbot after redirect)
+    await serveRandomGif(req, res, isDiscordBot);
 });
 
 // Health check endpoint
