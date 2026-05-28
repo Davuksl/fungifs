@@ -3,92 +3,122 @@ const axios = require('axios');
 const app = express();
 
 const PORT = process.env.PORT || 3000;
-const BASE_LIST_URL = 'https://raw.githubusercontent.com/Davuksl/giflist/main/list.txt';
+const BASE_LIST_URL = process.env.GIF_LIST_URL || 'https://raw.githubusercontent.com/Davuksl/giflist/main/list.txt';
+const UPDATE_INTERVAL = 60 * 1000; // 1 minute
 
 let gifList = [];
+let isInitialLoadComplete = false;
 
+/**
+ * Fetches the GIF list from GitHub and updates the local cache.
+ */
 async function updateGifList() {
     try {
         const cacheBusterUrl = `${BASE_LIST_URL}?t=${Date.now()}`;
-        const response = await axios.get(cacheBusterUrl);
-        gifList = response.data
+        const response = await axios.get(cacheBusterUrl, { timeout: 10000 });
+        
+        const newGifList = response.data
             .split('\n')
             .map(line => line.trim())
             .filter(line => line.length > 0 && (line.startsWith('http://') || line.startsWith('https://')));
-        console.log(`[GitHub] Список обновлен. Гифок: ${gifList.length}`);
+
+        if (newGifList.length > 0) {
+            gifList = newGifList;
+            console.log(`[GIF List] Updated. Count: ${gifList.length}`);
+        } else {
+            console.warn('[GIF List] Received an empty list from source.');
+        }
     } catch (error) {
-        console.error('[GitHub Ошибка]:', error.message);
+        console.error('[GIF List Error]:', error.message);
+    } finally {
+        isInitialLoadComplete = true;
     }
 }
 
-// Запускаем правильную функцию при старте и ставим таймер
+/**
+ * Fetches a GIF from the given URL and appends a random byte to bypass caching.
+ * @param {string} url 
+ * @returns {Promise<Buffer>}
+ */
+async function fetchGifWithAntiCache(url) {
+    const response = await axios({
+        method: 'get',
+        url: url,
+        responseType: 'arraybuffer',
+        timeout: 15000
+    });
+
+    const buffer = Buffer.from(response.data);
+    const randomByte = Buffer.from([Math.floor(Math.random() * 256)]);
+    return Buffer.concat([buffer, randomByte]);
+}
+
+// Initial fetch and scheduled updates
 updateGifList();
-setInterval(updateGifList, 60 * 1000);
+const updateInterval = setInterval(updateGifList, UPDATE_INTERVAL);
 
 app.get('/fun.gif', async (req, res) => {
+    const userAgent = req.headers['user-agent'] || '';
+    const isDiscordBot = userAgent.includes('Discordbot');
+
+    // Force headers to disable caching
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
+    if (!isInitialLoadComplete && gifList.length === 0) {
+        return res.status(503).send('Service initializing...');
+    }
+
+    if (gifList.length === 0) {
+        console.error('[Request Error] GIF list is empty.');
+        return res.status(404).send('No GIFs available.');
+    }
+
     try {
-        const userAgent = req.headers['user-agent'] || '';
-
-        // Жестко сносим кэш заголовками
-        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
-        res.setHeader('Pragma', 'no-cache');
-        res.setHeader('Expires', '0');
-
-        if (gifList.length === 0) {
-            return res.status(404).send('Empty list');
+        let randomIndex = Math.floor(Math.random() * gifList.length);
+        // Ensure the new GIF is not the same as the last one, if there are multiple GIFs available
+        if (gifList.length > 1) {
+            while (randomIndex === lastServedGifIndex) {
+                randomIndex = Math.floor(Math.random() * gifList.length);
+            }
         }
-
-        // 1. ЕСЛИ ЭТО БОТ ДИСКОРДА (пришел построить превью в чате)
-        if (userAgent.includes('Discordbot')) {
-            // Выбираем абсолютно случайную гифку для превью
-            const randomIndex = Math.floor(Math.random() * gifList.length);
-            const targetUrl = gifList[randomIndex];
-            
-            console.log(`[Бот Дискорда] Генерируем рандомное превью: ${targetUrl}`);
-            
-            const response = await axios({
-                method: 'get',
-                url: targetUrl,
-                responseType: 'arraybuffer'
-            });
-
-            let buffer = Buffer.from(response.data);
-            
-            // Анти-кэш для бота: пихаем случайный байт в хвост файла
-            const randomByte = Buffer.from([Math.floor(Math.random() * 256)]);
-            buffer = Buffer.concat([buffer, randomByte]);
-
-            res.setHeader('Content-Type', 'image/gif');
-            return res.send(buffer);
-        }
-
-        // 2. ЕСЛИ ЭТО КЛИЕНТ ЮЗЕРА (прямая прогрузка у людей в клиенте)
-        const randomIndex = Math.floor(Math.random() * gifList.length);
         const targetUrl = gifList[randomIndex];
+        lastServedGifIndex = randomIndex; // Update the last served index
 
-        console.log(`[Клиент Юзера] Прямой запрос! Отдаем рандом: ${targetUrl}`);
+        const logPrefix = isDiscordBot ? '[Discord Bot]' : '[User Client]';
+        console.log(`${logPrefix} Requesting random GIF: ${targetUrl}`);
 
-        const response = await axios({
-            method: 'get',
-            url: targetUrl,
-            responseType: 'arraybuffer'
-        });
-
-        let buffer = Buffer.from(response.data);
-        
-        // Анти-кэш для юзера
-        const randomByte = Buffer.from([Math.floor(Math.random() * 256)]);
-        buffer = Buffer.concat([buffer, randomByte]);
+        const gifBuffer = await fetchGifWithAntiCache(targetUrl);
 
         res.setHeader('Content-Type', 'image/gif');
-        res.send(buffer);
-
+        res.send(gifBuffer);
     } catch (error) {
-        console.error('[Ошибка эксплойта]:', error.message);
-        res.status(500).send('Error');
+        console.error('[GIF Serving Error]:', error.message);
+        res.status(502).send('Failed to fetch GIF from source.');
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`Фикс под оригинал с рандомным превью запущен на порту ${PORT}`);
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'ok',
+        gifCount: gifList.length,
+        initialized: isInitialLoadComplete
+    });
 });
+
+const server = app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+    console.log(`Source URL: ${BASE_LIST_URL}`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+    console.log('SIGTERM signal received: closing HTTP server');
+    clearInterval(updateInterval);
+    server.close(() => {
+        console.log('HTTP server closed');
+    });
+});
+
