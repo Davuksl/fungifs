@@ -58,7 +58,7 @@ async function generateDebateGifBuffer() {
     ctx.fillText('Каждый раз по-разному!', width / 2, 170);
 
     // Append a random byte to ensure uniqueness for Discord caching
-    const buffer = canvas.toBuffer('image/gif');
+    const buffer = canvas.toBuffer('image/png');
     const randomByte = Buffer.from([Math.floor(Math.random() * 256)]);
     return Buffer.concat([buffer, randomByte]);
 }
@@ -186,7 +186,7 @@ app.get('/test.gif', async (req, res) => {
     // For regular user clients, generate and serve the test GIF directly
     try {
         const gifBuffer = await generateDebateGifBuffer();
-        res.setHeader('Content-Type', 'image/gif');
+        res.setHeader('Content-Type', 'image/png');
         res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
@@ -202,7 +202,7 @@ app.get('/proxy-test-gif/:timestamp', async (req, res) => {
     // This route is specifically for Discordbot after a redirect for test.gif
     try {
         const gifBuffer = await generateDebateGifBuffer();
-        res.setHeader('Content-Type', 'image/gif');
+        res.setHeader('Content-Type', 'image/png');
         res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
