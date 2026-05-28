@@ -1,5 +1,6 @@
 const express = require('express');
 const axios = require('axios');
+const { createCanvas } = require('canvas'); // Import createCanvas
 const app = express();
 
 const PORT = process.env.PORT || 3000;
@@ -9,6 +10,58 @@ const UPDATE_INTERVAL = 60 * 1000; // 1 minute
 let gifList = [];
 let isInitialLoadComplete = false;
 let lastServedGifIndex = -1; // Initialize with an invalid index
+
+// Debate content for test.gif
+const DEBATE_TOPICS = [
+    { question: 'Какой цвет лучше?', answers: ['Синий!', 'Желтый!'] },
+    { question: 'Результат 7 * 6?', answers: ['42', '15'] },
+    { question: 'Кошки или собаки?', answers: ['Кошки!', 'Собаки!'] },
+    { question: 'Ночь или день?', answers: ['Ночь.', 'День.'] },
+    { question: 'Чай или кофе?', answers: ['Чай.', 'Кофе.'] },
+];
+
+/**
+ * Generates a GIF buffer with a random debate question and answers.
+ * @returns {Promise<Buffer>}
+ */
+async function generateDebateGifBuffer() {
+    const width = 600;
+    const height = 200;
+    const canvas = createCanvas(width, height);
+    const ctx = canvas.getContext('2d');
+
+    // Background
+    ctx.fillStyle = '#36393f'; // Discord dark theme background
+    ctx.fillRect(0, 0, width, height);
+
+    // Select a random debate topic
+    const topic = DEBATE_TOPICS[Math.floor(Math.random() * DEBATE_TOPICS.length)];
+
+    ctx.font = 'bold 30px Arial';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.fillText(topic.question, width / 2, 50);
+
+    // Draw two conflicting answers
+    ctx.font = '24px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#7289da'; // Discord blue
+    ctx.fillText(topic.answers[0], width / 4, 120);
+
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#f04747'; // Discord red
+    ctx.fillText(topic.answers[1], (width / 4) * 3, 120);
+    
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#99aab5'; // Discord grey
+    ctx.font = '18px Arial';
+    ctx.fillText('Каждый раз по-разному!', width / 2, 170);
+
+    // Append a random byte to ensure uniqueness for Discord caching
+    const buffer = canvas.toBuffer('image/gif');
+    const randomByte = Buffer.from([Math.floor(Math.random() * 256)]);
+    return Buffer.concat([buffer, randomByte]);
+}
 
 /**
  * Fetches the GIF list from GitHub and updates the local cache.
@@ -112,10 +165,50 @@ app.get('/fun.gif', async (req, res) => {
     await serveRandomGif(req, res, false); // false because it's not a Discord bot request here
 });
 
-// New route to handle redirected Discordbot requests
-app.get('/proxy-gif/:timestamp', async (req, res) => {
     // This route is specifically for Discordbot after a redirect, so we know it's a Discordbot
     await serveRandomGif(req, res, true);
+});
+
+// Route for test.gif - handles direct user requests and redirects Discord bots
+app.get('/test.gif', async (req, res) => {
+    const userAgent = req.headers['user-agent'] || '';
+    const isDiscordBot = userAgent.includes('Discordbot');
+
+    if (isDiscordBot) { // If it's a Discord bot, always redirect to a unique URL
+        const uniqueProxyTestUrl = `/proxy-test-gif/${Date.now()}`;
+        console.log(`[Discord Bot] Redirecting test.gif to unique proxy URL: ${uniqueProxyTestUrl}`);
+        res.redirect(302, uniqueProxyTestUrl);
+        return;
+    }
+
+    // For regular user clients, generate and serve the test GIF directly
+    try {
+        const gifBuffer = await generateDebateGifBuffer();
+        res.setHeader('Content-Type', 'image/gif');
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+        res.send(gifBuffer);
+    } catch (error) {
+        console.error('[Test GIF Serving Error]:', error.message);
+        res.status(500).send('Failed to generate test GIF.');
+    }
+});
+
+// New route to handle redirected Discordbot requests for /test.gif
+app.get('/proxy-test-gif/:timestamp', async (req, res) => {
+    // This route is specifically for Discordbot after a redirect for test.gif
+    try {
+        const gifBuffer = await generateDebateGifBuffer();
+        res.setHeader('Content-Type', 'image/gif');
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+        res.send(gifBuffer);
+    } catch (error) {
+        console.error('[Test GIF Serving Error]:', error.message);
+        res.status(500).send('Failed to generate test GIF.');
+    }
 });
 
 // Health check endpoint
