@@ -8,6 +8,7 @@ const UPDATE_INTERVAL = 60 * 1000; // 1 minute
 
 let gifList = [];
 let isInitialLoadComplete = false;
+let lastServedGifIndex = -1; // Initialize with an invalid index
 
 /**
  * Fetches the GIF list from GitHub and updates the local cache.
