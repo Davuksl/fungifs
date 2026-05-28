@@ -37,13 +37,13 @@ async function generateDebateGifBuffer() {
     // Select a random debate topic
     const topic = DEBATE_TOPICS[Math.floor(Math.random() * DEBATE_TOPICS.length)];
 
-    ctx.font = 'bold 30px Arial';
+    ctx.font = 'bold 30px sans-serif';
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
     ctx.fillText(topic.question, width / 2, 50);
 
     // Draw two conflicting answers
-    ctx.font = '24px Arial';
+    ctx.font = '24px sans-serif';
     ctx.textAlign = 'left';
     ctx.fillStyle = '#7289da'; // Discord blue
     ctx.fillText(topic.answers[0], width / 4, 120);
@@ -54,7 +54,7 @@ async function generateDebateGifBuffer() {
     
     ctx.textAlign = 'center';
     ctx.fillStyle = '#99aab5'; // Discord grey
-    ctx.font = '18px Arial';
+    ctx.font = '18px sans-serif';
     ctx.fillText('Каждый раз по-разному!', width / 2, 170);
 
     // Append a random byte to ensure uniqueness for Discord caching
