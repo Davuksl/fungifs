@@ -165,6 +165,8 @@ app.get('/fun.gif', async (req, res) => {
     await serveRandomGif(req, res, false); // false because it's not a Discord bot request here
 });
 
+// New route to handle redirected Discordbot requests
+app.get('/proxy-gif/:timestamp', async (req, res) => {
     // This route is specifically for Discordbot after a redirect, so we know it's a Discordbot
     await serveRandomGif(req, res, true);
 });
